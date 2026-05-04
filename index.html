@@ -1,181 +1,125 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
 <title>Analizador de Prospectos</title>
-
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#0f1117;color:#e5e7eb;font-family:Arial,sans-serif}
-header{padding:22px;background:#141823;border-bottom:1px solid #263041}
-.container{padding:22px;max-width:1500px;margin:auto}
-h1{margin:0;font-size:24px}
-p{color:#94a3b8}
-.card{background:#141823;border:1px solid #263041;border-radius:14px;padding:18px;margin-bottom:18px}
-input,select,button{padding:9px;border-radius:8px;border:1px solid #334155;background:#0f1117;color:white;margin:4px}
+body{margin:0;background:#0f1117;color:white;font-family:Arial;padding:20px}
+input,button,select{padding:8px;margin:4px;border-radius:6px}
 button{cursor:pointer}
-button.primary{background:#2563eb;border:none}
-button.green{background:#16a34a;border:none}
-button.red{background:#991b1b;border:none}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-.stat{background:#0f1117;border:1px solid #263041;border-radius:12px;padding:14px}
-.stat b{font-size:24px;color:#60a5fa}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{border-bottom:1px solid #263041;padding:9px;text-align:left;white-space:nowrap}
-th{background:#0f1117;color:#94a3b8;text-transform:uppercase;font-size:11px}
-.badge{padding:4px 9px;border-radius:999px;font-weight:bold;font-size:11px}
-.pagado{background:#dcfce7;color:#166534}
-.anulado{background:#fee2e2;color:#991b1b}
-.cobrar{background:#dbeafe;color:#1e40af}
-.otro{background:#e2e8f0;color:#334155}
-.scroll{overflow:auto;max-height:620px}
+table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px}
+th,td{border:1px solid #333;padding:6px;white-space:nowrap}
+th{background:#1f2937}
+.card{background:#141823;padding:15px;border-radius:10px;margin-bottom:15px}
+.pagado{background:#dcfce7;color:#166534;font-weight:bold}
+.anulado{background:#fee2e2;color:#991b1b;font-weight:bold}
+.cobrar{background:#dbeafe;color:#1e40af;font-weight:bold}
 </style>
 </head>
-
 <body>
 
-<header>
-  <h1>Analizador de Prospectos</h1>
-  <p>Sube Excel, CSV o PDF. Extrae clientes, teléfonos, ciudad, trámite y estado de pago.</p>
-</header>
-
-<div class="container">
+<h1>Analizador de Prospectos</h1>
 
 <div class="card">
-  <input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv,.pdf" />
-  <button class="primary" onclick="exportExcel()">Exportar Excel</button>
-  <button class="green" onclick="selectBestProspects()">Filtrar mejores prospectos</button>
-  <button class="red" onclick="clearAll()">Borrar todo</button>
-  <br>
-  <input id="search" placeholder="Buscar nombre, teléfono, ciudad..." oninput="render()" style="min-width:300px">
-  <select id="statusFilter" onchange="render()">
-    <option>Todos</option>
-    <option>Pagado</option>
-    <option>Por Cobrar</option>
-    <option>Anulado</option>
-    <option>Pendiente</option>
-    <option>Disponible</option>
-    <option>Completo</option>
-    <option>Bloqueado</option>
-  </select>
-  <select id="cityFilter" onchange="render()">
-    <option>Todos</option>
-  </select>
-  <div id="message" style="margin-top:10px;color:#facc15"></div>
-</div>
-
-<div class="grid">
-  <div class="stat"><b id="total">0</b><br>Total contactos</div>
-  <div class="stat"><b id="pagados">0</b><br>Pagados</div>
-  <div class="stat"><b id="cobrar">0</b><br>Por cobrar</div>
-  <div class="stat"><b id="anulados">0</b><br>Anulados</div>
-  <div class="stat"><b id="telefonos">0</b><br>Con teléfono</div>
-</div>
-
+<input type="file" id="files" multiple accept=".pdf,.xlsx,.xls,.csv">
+<button onclick="exportExcel()">Exportar Excel</button>
+<button onclick="clearAll()">Borrar Todo</button>
 <br>
+<input id="search" placeholder="Buscar nombre, teléfono o ciudad" oninput="render()" style="width:320px">
+<select id="statusFilter" onchange="render()">
+<option>Todos</option>
+<option>Pagado</option>
+<option>Anulado</option>
+<option>Por Cobrar</option>
+<option>Pendiente</option>
+<option>Disponible</option>
+<option>Completo</option>
+<option>Bloqueado</option>
+</select>
+<p id="msg"></p>
+</div>
 
-<div class="card scroll">
+<div class="card">
+<b>Total:</b> <span id="total">0</span> |
+<b>Pagados:</b> <span id="pagados">0</span> |
+<b>Anulados:</b> <span id="anulados">0</span> |
+<b>Con teléfono:</b> <span id="telefonos">0</span>
+</div>
+
 <table>
 <thead>
 <tr>
 <th>#</th>
-<th>Prioridad</th>
 <th>Nombre</th>
 <th>Teléfono</th>
 <th>Ciudad</th>
 <th>Trámite</th>
-<th>Status Final</th>
+<th>Status</th>
 <th>Fuente</th>
 <th>Nota</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
 </table>
-</div>
-
-</div>
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc =
 "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-let rows = JSON.parse(localStorage.getItem("prospectos_v3") || "[]");
+let rows = JSON.parse(localStorage.getItem("prospectos_ok") || "[]");
 
-const STATUS_PRIORITY = {
-  "Pagado": 100,
-  "Por Cobrar": 80,
-  "Pendiente": 60,
-  "Disponible": 50,
-  "Completo": 45,
-  "Bloqueado": 30,
-  "Anulado": 10,
-  "Sin Status": 0
-};
-
-document.getElementById("fileInput").addEventListener("change", async e => {
+document.getElementById("files").addEventListener("change", async e => {
   const files = Array.from(e.target.files);
-  msg("Procesando archivos...");
+  document.getElementById("msg").innerText = "Procesando...";
   for (const file of files) {
     if (file.name.toLowerCase().endsWith(".pdf")) {
       await processPDF(file);
     } else {
-      await processExcelOrCSV(file);
+      await processExcel(file);
     }
   }
-  mergeAndSave();
+  dedupe();
+  save();
   render();
-  msg("Listo. Archivos procesados: " + files.length);
+  document.getElementById("msg").innerText = "Listo: " + rows.length + " registros procesados.";
 });
-
-function msg(t){ document.getElementById("message").innerText = t; }
 
 function clean(v){
   return String(v || "").replace(/\s+/g," ").trim();
 }
 
-function phoneDigits(v){
+function digits(v){
   return String(v || "").replace(/\D/g,"");
 }
 
-function normalizePhone(v){
-  const d = phoneDigits(v);
+function phone(v){
+  const d = digits(v);
   if(d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
   if(d.length === 11 && d.startsWith("1")) return `+1 (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
-  if(d.length >= 10) return d;
+  if(d.length > 11) return d;
   return "";
 }
 
-function extractPhoneFromText(text){
-  const patterns = [
-    /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g,
-    /\b\d{10,11}\b/g
-  ];
-  for(const p of patterns){
-    const m = String(text).match(p);
-    if(m && m[0]) return normalizePhone(m[0]);
-  }
-  return "";
+function findPhone(text){
+  const m = String(text).match(/(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}|\b\d{10,13}\b/);
+  return m ? phone(m[0]) : "";
 }
 
-function normalizeStatus(v, sourceType=""){
+function statusFromText(v){
   const s = clean(v).toLowerCase();
-
-  if(sourceType === "paid") return "Pagado";
-  if(s.includes("pagado") || s.includes("pago") || s.includes("fecha de pago") || s.includes("titular pago")) return "Pagado";
-  if(s.includes("por cobrar") || s.includes("cobrar")) return "Por Cobrar";
-  if(s.includes("anulado") || s.includes("cancelado")) return "Anulado";
-  if(s.includes("pendiente") || s.includes("espera")) return "Pendiente";
+  if(s.includes("pagado") || s.includes("pago")) return "Pagado";
+  if(s.includes("anulado") || s.includes("cancel")) return "Anulado";
+  if(s.includes("cobrar")) return "Por Cobrar";
+  if(s.includes("pendiente")) return "Pendiente";
   if(s.includes("disponible")) return "Disponible";
   if(s.includes("completo")) return "Completo";
   if(s.includes("bloqueado")) return "Bloqueado";
-  return clean(v) || "Sin Status";
+  return "Sin Status";
 }
 
-function findColumn(headers, keys){
+function findCol(headers, keys){
   const lower = headers.map(h => String(h).toLowerCase());
   for(const k of keys){
     const i = lower.findIndex(h => h.includes(k));
@@ -184,49 +128,40 @@ function findColumn(headers, keys){
   return null;
 }
 
-function detectRowType(headers){
-  const h = headers.join(" ").toLowerCase();
-  if(h.includes("fecha de pago") || h.includes("titular pago") || h.includes("monto") || h.includes("telefono cliente")) return "paid";
-  if(h.includes("nombres") || h.includes("apellidos") || h.includes("curp") || h.includes("tramites")) return "appointment";
-  if(h.includes("correo") && h.includes("cupos")) return "account";
-  return "generic";
-}
-
-async function processExcelOrCSV(file){
+async function processExcel(file){
   const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, {type:"array"});
+  const wb = XLSX.read(buf,{type:"array"});
 
-  for(const sheetName of wb.SheetNames){
-    const ws = wb.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(ws, {defval:"", raw:false});
+  for(const sheet of wb.SheetNames){
+    const data = XLSX.utils.sheet_to_json(wb.Sheets[sheet],{defval:"",raw:false});
     if(!data.length) continue;
 
     const headers = Object.keys(data[0]);
-    const type = detectRowType(headers);
 
-    const colNombre = findColumn(headers, ["cliente (s)", "cliente", "nombres apellidos", "nombre", "titular"]);
-    const colTelefono = findColumn(headers, ["telefono cliente", "teléfono cliente", "numero", "teléfono", "telefono", "phone", "familiar"]);
-    const colCiudad = findColumn(headers, ["ciudad", "city"]);
-    const colTramite = findColumn(headers, ["tramites", "trámite", "tramite", "servicio", "tipo"]);
-    const colStatus = findColumn(headers, ["status", "estado", "nota", "notas"]);
-    const colFechaPago = findColumn(headers, ["fecha de pago"]);
-    const colMonto = findColumn(headers, ["monto"]);
+    const colCliente = findCol(headers,["cliente (s)","cliente","nombres apellidos","nombre","titular"]);
+    const colTelefono = findCol(headers,["telefono cliente","teléfono cliente","numero","teléfono","telefono","familiar"]);
+    const colCiudad = findCol(headers,["ciudad"]);
+    const colTramite = findCol(headers,["tramites","trámite","tramite","servicio"]);
+    const colStatus = findCol(headers,["status","estado","notas","nota"]);
+    const colFechaPago = findCol(headers,["fecha de pago"]);
+    const colMonto = findCol(headers,["monto"]);
+
+    const isPaid = headers.join(" ").toLowerCase().includes("fecha de pago") ||
+                   headers.join(" ").toLowerCase().includes("monto") ||
+                   headers.join(" ").toLowerCase().includes("titular pago");
 
     for(const r of data){
-      let nombre = clean(colNombre ? r[colNombre] : "");
-      let telefono = normalizePhone(colTelefono ? r[colTelefono] : "") || extractPhoneFromText(Object.values(r).join(" "));
+      let nombre = clean(colCliente ? r[colCliente] : "");
+      let telefono = phone(colTelefono ? r[colTelefono] : "") || findPhone(Object.values(r).join(" "));
       let ciudad = clean(colCiudad ? r[colCiudad] : "");
-      let tramite = clean(colTramite ? r[colTramite] : "");
-      let status = normalizeStatus(colStatus ? r[colStatus] : "", type);
+      let tramite = clean(colTramite ? r[colTramite] : "Cita consular");
+      let status = isPaid ? "Pagado" : statusFromText(colStatus ? r[colStatus] : "");
 
-      if(type === "paid") status = "Pagado";
-
-      if(!nombre && type === "paid"){
+      if(!nombre && isPaid){
         nombre = clean(r["Cliente (s)"] || r["Cliente"] || r["Titular Pago"] || "");
       }
 
-      if(!nombre && !telefono) continue;
-      if(isFakeRow(nombre, telefono, ciudad)) continue;
+      if(isBad(nombre, telefono)) continue;
 
       rows.push({
         id: crypto.randomUUID(),
@@ -235,10 +170,7 @@ async function processExcelOrCSV(file){
         ciudad,
         tramite,
         status,
-        prioridad: STATUS_PRIORITY[status] || 0,
-        fuente: `${file.name} / ${sheetName}`,
-        fechaPago: clean(colFechaPago ? r[colFechaPago] : ""),
-        monto: clean(colMonto ? r[colMonto] : ""),
+        fuente: file.name + " / " + sheet,
         nota: ""
       });
     }
@@ -249,150 +181,192 @@ async function processPDF(file){
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data:buf}).promise;
 
-  for(let p=1; p<=pdf.numPages; p++){
-    const page = await pdf.getPage(p);
+  for(let pageNum=1; pageNum<=pdf.numPages; pageNum++){
+    const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
-    const text = content.items.map(i => i.str).join(" ");
-    parsePDFText(text, file.name, p);
+
+    const items = content.items.map(i => ({
+      text: clean(i.str),
+      x: i.transform[4],
+      y: Math.round(i.transform[5])
+    })).filter(i => i.text);
+
+    const lines = groupByLine(items);
+    const pageText = lines.map(l => l.text).join(" ").toLowerCase();
+
+    if(pageText.includes("fecha de pago") && pageText.includes("telefono cliente")){
+      parsePaidPDFLines(lines, file.name, pageNum);
+    } else if(pageText.includes("nombres apellidos") && pageText.includes("tramites")){
+      parseAppointmentPDFLines(lines, file.name, pageNum);
+    } else if(pageText.includes("ciudad") && pageText.includes("correo") && pageText.includes("status")){
+      parseAccountPDFLines(lines, file.name, pageNum);
+    }
   }
 }
 
-function parsePDFText(text, fileName, pageNum){
-  const t = clean(text);
-  const lower = t.toLowerCase();
-
-  const isPaidPage =
-    lower.includes("fecha de pago") ||
-    lower.includes("titular pago") ||
-    lower.includes("monto") ||
-    lower.includes("telefono cliente");
-
-  const isAppointmentPage =
-    lower.includes("nombres apellidos") ||
-    lower.includes("curp") ||
-    lower.includes("tramites") ||
-    lower.includes("status propietario");
-
-  if(isPaidPage){
-    parsePaidPDFPage(t, fileName, pageNum);
-    return;
+function groupByLine(items){
+  const map = {};
+  for(const it of items){
+    const key = it.y;
+    if(!map[key]) map[key] = [];
+    map[key].push(it);
   }
 
-  if(isAppointmentPage){
-    parseAppointmentPDFPage(t, fileName, pageNum);
-    return;
-  }
-
-  parseGenericPDFPage(t, fileName, pageNum);
+  return Object.values(map).map(arr => {
+    arr.sort((a,b)=>a.x-b.x);
+    return {
+      y: arr[0].y,
+      cells: arr,
+      text: arr.map(i=>i.text).join(" ")
+    };
+  }).sort((a,b)=>b.y-a.y);
 }
 
-function parsePaidPDFPage(text, fileName, pageNum){
-  const cities = ["Atlanta","San Francisco","San Jose","Austin","Dallas","Houston","San Bernardino","Los Angeles","Sacramento","Seattle","Fresno","Raleigh","Omaha","Kansas City","New York","Milwaukee","Santa Ana","Indianapolis","Oxnard","Portland","Las Vegas","Miami","Orlando","Chicago"];
-  const chunks = text.split(/(?=\b(?:Americo|Legalis|Yhon|Cesar|Jared|Prado|Aaron|Samuel|Miguel)\b)/i);
+function parsePaidPDFLines(lines, file, page){
+  for(const line of lines){
+    const text = line.text;
+    const p = findPhone(text);
+    if(!p) continue;
 
-  for(const c of chunks){
-    const phone = extractPhoneFromText(c);
-    if(!phone) continue;
+    const status = "Pagado";
+    const ciudad = getCityFromText(text);
+    const nombre = getNameAfterPhone(text, p);
 
-    let ciudad = "";
-    for(const city of cities){
-      if(c.toLowerCase().includes(city.toLowerCase())){
-        ciudad = city;
-        break;
-      }
-    }
-
-    let afterPhone = c.split(phoneDigits(phone).slice(-7)).pop() || "";
-    let nombre = clean(afterPhone.replace(/\b\d+\b.*$/,"").replace(/Cant\.? Citas.*/i,""));
-
-    if(!nombre || nombre.length < 2){
-      const words = c.split(/\s+/);
-      const phoneIndex = words.findIndex(w => phoneDigits(w).length >= 7);
-      nombre = clean(words.slice(phoneIndex + 1, phoneIndex + 5).join(" "));
-    }
-
-    if(isFakeRow(nombre, phone, ciudad)) continue;
+    if(isBad(nombre, p)) continue;
 
     rows.push({
       id: crypto.randomUUID(),
       nombre,
-      telefono: phone,
+      telefono:p,
       ciudad,
-      tramite: "Cita consular",
-      status: "Pagado",
-      prioridad: 100,
-      fuente: `${fileName} / PDF página ${pageNum}`,
-      fechaPago: "",
-      monto: "",
-      nota: ""
+      tramite:"Cita consular",
+      status,
+      fuente:`${file} página ${page}`,
+      nota:""
     });
   }
 }
 
-function parseAppointmentPDFPage(text, fileName, pageNum){
-  const parts = text.split(/(?=\b[A-ZÁÉÍÓÚÑ]?[a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ]?[a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ]?[a-záéíóúñ]+)/);
+function parseAppointmentPDFLines(lines, file, page){
+  for(const line of lines){
+    const text = line.text;
+    const p = findPhone(text);
+    if(!p) continue;
 
-  for(const c of parts){
-    const phone = extractPhoneFromText(c);
-    if(!phone) continue;
+    let status = statusFromText(text);
+    let tramite = getTramite(text);
+    let nombre = text.split(/\d{1,2}\/\d{1,2}\/\d{2,4}|MANUALMENTE|[A-Z]{4}\d{6}/)[0];
+    nombre = clean(nombre.replace("Nombres Apellidos",""));
 
-    const status = normalizeStatus(c);
-    const tramiteMatch = c.match(/\b(1ra|2da|Renovar|Renovacion|Pasaporte|Ma|Pa|Cre|Matricula|Matrícula)[^0-9]{0,30}/i);
-    const tramite = tramiteMatch ? clean(tramiteMatch[0]) : "Cita consular";
-
-    let nombre = clean(c.split(/\d{1,2}\/\d{1,2}\/\d{2,4}|MANUALMENTE|[A-Z]{4}\d{6}/)[0]);
-    nombre = nombre.replace(/Nombres Apellidos/i,"").trim();
-
-    if(isFakeRow(nombre, phone, "")) continue;
+    if(isBad(nombre, p)) continue;
 
     rows.push({
       id: crypto.randomUUID(),
       nombre,
-      telefono: phone,
-      ciudad: "",
+      telefono:p,
+      ciudad:"",
       tramite,
       status,
-      prioridad: STATUS_PRIORITY[status] || 0,
-      fuente: `${fileName} / PDF página ${pageNum}`,
-      fechaPago: "",
-      monto: "",
-      nota: ""
+      fuente:`${file} página ${page}`,
+      nota:""
     });
   }
 }
 
-function parseGenericPDFPage(text, fileName, pageNum){
-  const phone = extractPhoneFromText(text);
-  if(!phone) return;
+function parseAccountPDFLines(lines, file, page){
+  for(const line of lines){
+    const text = line.text;
+    if(!text.includes("@")) continue;
+
+    const parts = text.split(" ");
+    const ciudad = parts[0] || "";
+    const status = statusFromText(text);
+
+    rows.push({
+      id: crypto.randomUUID(),
+      nombre:"",
+      telefono:"",
+      ciudad,
+      tramite:"Cuenta / cupo",
+      status,
+      fuente:`${file} página ${page}`,
+      nota:text
+    });
+  }
 }
 
-function isFakeRow(nombre, telefono, ciudad){
+function getNameAfterPhone(text, p){
+  const d = digits(p);
+  const last7 = d.slice(-7);
+  const compact = text.replace(/\D/g,"");
+
+  let words = text.split(/\s+/);
+  let idx = -1;
+
+  for(let i=0;i<words.length;i++){
+    if(digits(words[i]).length >= 7 || digits(words.slice(i,i+3).join("")).includes(last7)){
+      idx = i;
+      break;
+    }
+  }
+
+  if(idx >= 0){
+    let possible = words.slice(idx+1).join(" ");
+    possible = possible.replace(/\b\d+\b.*$/,"");
+    possible = possible.replace(/Cant\.? Citas.*/i,"");
+    possible = possible.replace(/\b\d{1,2}\s+\w+\s+\d{4}.*/i,"");
+    return clean(possible);
+  }
+
+  return "";
+}
+
+function getCityFromText(text){
+  const cities = [
+    "San Francisco","San Jose","San Bernardino","Los Angeles","Sacramento",
+    "Atlanta","Austin","Dallas","Houston","Seattle","Fresno","Raleigh",
+    "Omaha","Kansas City","New York","Milwaukee","Santa Ana","Indianapolis",
+    "Oxnard","Portland","Las Vegas","Chicago","Miami","Orlando"
+  ];
+  const lower = text.toLowerCase();
+  for(const c of cities){
+    if(lower.includes(c.toLowerCase())) return c;
+  }
+  return "";
+}
+
+function getTramite(text){
+  const m = text.match(/(1ra|2da|Renovar|Renovacion|Renovación|Pasaporte|Matricula|Matrícula|Pa|Ma|Cre)[^0-9]{0,35}/i);
+  return m ? clean(m[0]) : "Cita consular";
+}
+
+function isBad(nombre, telefono){
   const n = clean(nombre).toLowerCase();
-  if(n.includes("cliente") || n.includes("telefono") || n.includes("titular pago") || n.includes("d/mm/yyyy")) return true;
-  if(clean(ciudad).toLowerCase() === "ciudad") return true;
-  if(phoneDigits(telefono).length < 10) return true;
+  if(!telefono || digits(telefono).length < 10) return true;
+  if(!n) return true;
+  if(n.includes("cliente") || n.includes("telefono") || n.includes("titular") || n.includes("d/mm/yyyy")) return true;
+  if(n.length < 3) return true;
   return false;
 }
 
-function mergeAndSave(){
+function dedupe(){
   const map = new Map();
 
   for(const r of rows){
-    const key = phoneDigits(r.telefono) || clean(r.nombre).toLowerCase();
-
+    const key = digits(r.telefono) || r.nombre.toLowerCase();
     if(!key) continue;
 
     if(!map.has(key)){
-      map.set(key, r);
-    }else{
+      map.set(key,r);
+    } else {
       const old = map.get(key);
-      const oldP = STATUS_PRIORITY[old.status] || 0;
-      const newP = STATUS_PRIORITY[r.status] || 0;
+      const rankOld = rank(old.status);
+      const rankNew = rank(r.status);
 
-      if(newP > oldP){
-        map.set(key, {...old, ...r, nota: old.nota || r.nota});
-      }else{
-        map.set(key, {
+      if(rankNew > rankOld){
+        map.set(key,{...old,...r,nota:old.nota || r.nota});
+      } else {
+        map.set(key,{
           ...old,
           ciudad: old.ciudad || r.ciudad,
           tramite: old.tramite || r.tramite,
@@ -402,125 +376,93 @@ function mergeAndSave(){
     }
   }
 
-  rows = Array.from(map.values()).sort((a,b)=>(b.prioridad||0)-(a.prioridad||0));
-  localStorage.setItem("prospectos_v3", JSON.stringify(rows));
-  updateCityFilter();
+  rows = Array.from(map.values()).sort((a,b)=>rank(b.status)-rank(a.status));
 }
 
-function updateCityFilter(){
-  const select = document.getElementById("cityFilter");
-  const current = select.value;
-  const cities = [...new Set(rows.map(r=>r.ciudad).filter(Boolean))].sort();
+function rank(s){
+  if(s==="Pagado") return 100;
+  if(s==="Por Cobrar") return 80;
+  if(s==="Pendiente") return 60;
+  if(s==="Disponible") return 50;
+  if(s==="Completo") return 40;
+  if(s==="Bloqueado") return 30;
+  if(s==="Anulado") return 10;
+  return 0;
+}
 
-  select.innerHTML = `<option>Todos</option>` + cities.map(c=>`<option>${c}</option>`).join("");
-  select.value = cities.includes(current) ? current : "Todos";
+function save(){
+  localStorage.setItem("prospectos_ok",JSON.stringify(rows));
 }
 
 function render(){
-  updateCityFilter();
-
   const q = document.getElementById("search").value.toLowerCase();
   const sf = document.getElementById("statusFilter").value;
-  const cf = document.getElementById("cityFilter").value;
 
-  const filtered = rows.filter(r=>{
+  const filtered = rows.filter(r => {
     if(sf !== "Todos" && r.status !== sf) return false;
-    if(cf !== "Todos" && r.ciudad !== cf) return false;
-
-    const all = `${r.nombre} ${r.telefono} ${r.ciudad} ${r.tramite} ${r.status}`.toLowerCase();
-    return all.includes(q);
+    return `${r.nombre} ${r.telefono} ${r.ciudad} ${r.tramite}`.toLowerCase().includes(q);
   });
 
   document.getElementById("total").innerText = rows.length;
   document.getElementById("pagados").innerText = rows.filter(r=>r.status==="Pagado").length;
-  document.getElementById("cobrar").innerText = rows.filter(r=>r.status==="Por Cobrar").length;
   document.getElementById("anulados").innerText = rows.filter(r=>r.status==="Anulado").length;
-  document.getElementById("telefonos").innerText = rows.filter(r=>phoneDigits(r.telefono).length>=10).length;
+  document.getElementById("telefonos").innerText = rows.filter(r=>digits(r.telefono).length>=10).length;
 
   const tbody = document.getElementById("tbody");
   tbody.innerHTML = "";
 
   filtered.forEach((r,i)=>{
-    const cls = r.status==="Pagado" ? "pagado" : r.status==="Anulado" ? "anulado" : r.status==="Por Cobrar" ? "cobrar" : "otro";
-
+    const cls = r.status==="Pagado" ? "pagado" : r.status==="Anulado" ? "anulado" : r.status==="Por Cobrar" ? "cobrar" : "";
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i+1}</td>
-      <td>${r.prioridad || 0}</td>
-      <td>${escapeHTML(r.nombre)}</td>
-      <td>${escapeHTML(r.telefono)}</td>
-      <td>${escapeHTML(r.ciudad || "Sin ciudad")}</td>
-      <td>${escapeHTML(r.tramite || "Cita consular")}</td>
-      <td><span class="badge ${cls}">${escapeHTML(r.status)}</span></td>
-      <td>${escapeHTML(r.fuente || "")}</td>
-      <td><input value="${escapeAttr(r.nota || "")}" onchange="updateNote('${r.id}', this.value)"></td>
+      <td>${esc(r.nombre)}</td>
+      <td>${esc(r.telefono)}</td>
+      <td>${esc(r.ciudad || "Sin ciudad")}</td>
+      <td>${esc(r.tramite)}</td>
+      <td class="${cls}">${esc(r.status)}</td>
+      <td>${esc(r.fuente)}</td>
+      <td><input value="${escAttr(r.nota)}" onchange="note('${r.id}',this.value)"></td>
     `;
     tbody.appendChild(tr);
   });
 }
 
-function updateNote(id, val){
-  rows = rows.map(r => r.id === id ? {...r, nota:val} : r);
-  localStorage.setItem("prospectos_v3", JSON.stringify(rows));
+function note(id,val){
+  rows = rows.map(r=>r.id===id?{...r,nota:val}:r);
+  save();
 }
 
 function exportExcel(){
-  const data = rows.map((r,i)=>({
-    "#": i+1,
-    Prioridad: r.prioridad,
-    Nombre: r.nombre,
-    Telefono: r.telefono,
-    Ciudad: r.ciudad,
-    Tramite: r.tramite,
-    "Status Final": r.status,
-    "Fecha Pago": r.fechaPago,
-    Monto: r.monto,
-    Fuente: r.fuente,
-    Nota: r.nota
-  }));
-
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(data);
-  XLSX.utils.book_append_sheet(wb, ws, "Prospectos");
-
-  const resumen = {};
-  rows.forEach(r=>{
-    const c = r.ciudad || "Sin ciudad";
-    if(!resumen[c]) resumen[c] = {Total:0, Pagado:0, PorCobrar:0, Anulado:0};
-    resumen[c].Total++;
-    if(r.status==="Pagado") resumen[c].Pagado++;
-    if(r.status==="Por Cobrar") resumen[c].PorCobrar++;
-    if(r.status==="Anulado") resumen[c].Anulado++;
-  });
-
-  const resumenData = Object.entries(resumen).map(([Ciudad,d])=>({Ciudad,...d}));
-  const ws2 = XLSX.utils.json_to_sheet(resumenData);
-  XLSX.utils.book_append_sheet(wb, ws2, "Resumen por Ciudad");
-
-  XLSX.writeFile(wb, "prospectos_limpios.xlsx");
-}
-
-function selectBestProspects(){
-  document.getElementById("statusFilter").value = "Pagado";
-  render();
+  const data = rows.map((r,i)=>({
+    "#":i+1,
+    Nombre:r.nombre,
+    Telefono:r.telefono,
+    Ciudad:r.ciudad,
+    Tramite:r.tramite,
+    Status:r.status,
+    Fuente:r.fuente,
+    Nota:r.nota
+  }));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),"Prospectos");
+  XLSX.writeFile(wb,"prospectos_limpios.xlsx");
 }
 
 function clearAll(){
-  if(confirm("¿Seguro que quieres borrar todos los datos guardados?")){
-    rows = [];
-    localStorage.removeItem("prospectos_v3");
+  if(confirm("¿Borrar todo?")){
+    rows=[];
+    localStorage.removeItem("prospectos_ok");
     render();
   }
 }
 
-function escapeHTML(v){
-  return String(v||"").replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[m]));
+function esc(v){
+  return String(v||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 }
 
-function escapeAttr(v){
-  return escapeHTML(v).replace(/"/g,"&quot;");
+function escAttr(v){
+  return esc(v).replace(/"/g,"&quot;");
 }
 
 render();
