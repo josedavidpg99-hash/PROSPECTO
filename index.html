@@ -2,380 +2,165 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Elder Adventures – El Juego del Misionero</title>
+<title>Organizador de Clientes</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Josefin+Sans:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap');
-
-  :root {
-    --navy: #0d1b3e;
-    --royal: #1a3a7c;
-    --gold: #c9a84c;
-    --gold-light: #f0cc70;
-    --white: #f5f0e8;
-    --cream: #ede5d0;
-    --gray: #8a8a8a;
-    --red: #c0392b;
-    --green: #27ae60;
-    --teal: #1a6b7c;
-    --shadow: rgba(0,0,0,0.5);
-  }
-
-  * { margin:0; padding:0; box-sizing:border-box; }
-
-  body {
-    background: var(--navy);
-    font-family: 'Josefin Sans', sans-serif;
-    color: var(--white);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── PANTALLA TÍTULO ── */
-  #screen-title {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    background: radial-gradient(ellipse at 50% 30%, #1e3f80 0%, #0d1b3e 70%);
-    position: relative;
-    overflow: hidden;
-  }
-  #screen-title::before {
-    content:'';
-    position:absolute; inset:0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a84c' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  }
-  .title-angel {
-    font-size: 80px;
-    animation: floatAngel 3s ease-in-out infinite;
-    filter: drop-shadow(0 0 20px var(--gold));
-  }
-  @keyframes floatAngel {
-    0%,100%{transform:translateY(0) rotate(-3deg);} 50%{transform:translateY(-15px) rotate(3deg);}
-  }
-  .title-main {
-    font-family: 'Cinzel Decorative', serif;
-    font-size: clamp(24px,5vw,52px);
-    color: var(--gold-light);
-    text-shadow: 0 0 40px var(--gold), 0 2px 0 #000;
-    text-align: center;
-    line-height: 1.2;
-    margin: 16px 0 8px;
-  }
-  .title-sub {
-    font-family: 'Playfair Display', serif;
-    font-style: italic;
-    font-size: 18px;
-    color: var(--cream);
-    opacity: .8;
-    margin-bottom: 40px;
-  }
-  .btn-start {
-    background: linear-gradient(135deg, var(--gold), #a07830);
-    color: var(--navy);
-    border: none;
-    padding: 16px 48px;
-    font-family: 'Cinzel Decorative', serif;
-    font-size: 18px;
-    cursor: pointer;
-    border-radius: 4px;
-    box-shadow: 0 4px 20px rgba(201,168,76,0.5);
-    transition: all .3s;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-  }
-  .btn-start:hover { transform:scale(1.05); box-shadow:0 6px 30px rgba(201,168,76,0.7); }
-
-  /* Resto del CSS (mantengo todo igual que antes) */
-  #screen-game { display:none; flex-direction:column; min-height:100vh; }
-  .hud { background: linear-gradient(180deg, #071229 0%, rgba(7,18,41,0.95) 100%); border-bottom: 2px solid var(--gold); padding: 10px 20px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; position: sticky; top:0; z-index:100; }
-  .hud-name { font-family: 'Cinzel Decorative', serif; color: var(--gold-light); font-size: 14px; min-width: 150px; }
-  .stat-bar { display:flex; align-items:center; gap:8px; font-size:12px; }
-  .stat-label { color: var(--gold); text-transform: uppercase; letter-spacing:1px; font-size:10px; min-width:60px; }
-  .bar-track { background: rgba(255,255,255,0.1); border:1px solid rgba(201,168,76,0.3); border-radius:3px; width:90px; height:10px; overflow:hidden; }
-  .bar-fill { height:100%; border-radius:3px; transition: width .5s; }
-  .bar-fe   { background: linear-gradient(90deg,#4a90d9,#7ec8f5); }
-  .bar-ener { background: linear-gradient(90deg,#f5a623,#f0cc70); }
-  .bar-animo{ background: linear-gradient(90deg,#7ed321,#b8f036); }
-  .hud-coins { margin-left:auto; font-size:14px; color:var(--gold-light); }
-  .hud-asign { font-size:11px; color:var(--cream); opacity:.7; }
-  .hud-week  { font-size:11px; color:var(--gold); }
-
-  .game-layout { display: grid; grid-template-columns: 260px 1fr 260px; gap: 0; flex: 1; }
-  @media(max-width:900px){ .game-layout{ grid-template-columns:1fr; } .panel-left,.panel-right{ display:none; } }
-
-  .panel-left { background: linear-gradient(180deg, #0d2054 0%, #071229 100%); border-right: 1px solid rgba(201,168,76,0.2); padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-  .missionary-stage { width: 180px; height: 280px; position: relative; cursor: pointer; }
-  .missionary-canvas { width: 100%; height: 100%; }
-  .equip-slots { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .slot { background: rgba(255,255,255,0.05); border: 1px solid rgba(201,168,76,0.25); border-radius:4px; padding: 6px; text-align: center; font-size: 10px; cursor: pointer; transition: all .2s; }
-  .slot:hover { border-color:var(--gold); background:rgba(201,168,76,0.1); }
-  .slot-icon { font-size:22px; display:block; }
-  .slot-name { color:var(--gold); font-size:9px; text-transform:uppercase; }
-  .slot-val  { color:var(--cream); font-size:10px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-
-  .panel-center { background: #0a1630; display: flex; flex-direction:column; }
-  .location-banner { background: linear-gradient(135deg, var(--royal), #0d2054); border-bottom: 1px solid rgba(201,168,76,0.3); padding: 14px 20px; display: flex; align-items:center; gap:12px; }
-  .location-icon { font-size:32px; }
-  .location-name { font-family:'Cinzel Decorative',serif; font-size:16px; color:var(--gold-light); }
-  .location-desc { font-size:11px; color:var(--cream); opacity:.7; }
-
-  .event-box { margin: 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; padding: 20px; min-height: 160px; }
-  .event-title { font-family:'Playfair Display',serif; font-size:18px; color:var(--gold-light); margin-bottom:8px; }
-  .event-text { font-size:13px; color:var(--cream); line-height:1.7; }
-  .event-npc  { display:flex; gap:10px; align-items:flex-start; margin-top:12px; }
-  .npc-avatar { font-size:40px; }
-  .npc-bubble { background: rgba(26,58,124,0.4); border: 1px solid rgba(201,168,76,0.2); border-radius: 0 8px 8px 8px; padding: 10px 14px; font-size: 12px; color: var(--cream); line-height:1.6; flex:1; }
-
-  .actions-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; padding: 0 20px 20px; }
-  .action-btn { background: rgba(26,58,124,0.3); border: 1px solid rgba(201,168,76,0.25); border-radius: 6px; padding: 12px 8px; cursor: pointer; text-align: center; transition: all .2s; color: var(--white); font-family: 'Josefin Sans',sans-serif; }
-  .action-btn:hover { background:rgba(201,168,76,0.15); border-color:var(--gold); transform:translateY(-1px); }
-  .action-btn:disabled { opacity:.3; cursor:not-allowed; transform:none; }
-  .action-icon { font-size:24px; display:block; margin-bottom:4px; }
-  .action-name { font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
-  .action-cost { font-size:10px; color:var(--gold); margin-top:3px; }
-
-  .panel-right { background: linear-gradient(180deg, #0d2054 0%, #071229 100%); border-left: 1px solid rgba(201,168,76,0.2); padding: 20px; overflow-y: auto; }
-  .panel-section-title { font-family:'Cinzel Decorative',serif; font-size:12px; color:var(--gold); text-transform:uppercase; letter-spacing:2px; border-bottom: 1px solid rgba(201,168,76,0.25); padding-bottom:6px; margin-bottom:12px; margin-top:16px; }
-  .log-entry { font-size:11px; color:var(--cream); opacity:.8; padding: 4px 0; border-bottom:1px solid rgba(255,255,255,0.05); line-height:1.5; }
-  .log-entry.good { color:#7ed321; opacity:1; }
-  .log-entry.bad  { color:#e74c3c; opacity:1; }
-  .log-entry.special { color:var(--gold-light); opacity:1; }
-
-  .companion-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(201,168,76,0.2); border-radius:6px; padding:10px; display:flex; gap:10px; align-items:center; margin-bottom:8px; }
-  .comp-avatar { font-size:32px; }
-  .comp-name { font-size:12px; color:var(--gold-light); font-weight:600; }
-  .comp-origin{ font-size:10px; color:var(--cream); opacity:.7; }
-  .comp-compat{ font-size:10px; color:var(--green); }
-
-  .mission-progress { background: rgba(255,255,255,0.04); border:1px solid rgba(201,168,76,0.2); border-radius:6px; padding:12px; margin-bottom:8px; }
-  .mp-label { font-size:10px; color:var(--gold); text-transform:uppercase; margin-bottom:4px; }
-  .mp-bar-track { background:rgba(255,255,255,0.08); border-radius:3px; height:8px; overflow:hidden; }
-  .mp-bar-fill  { height:100%; background: linear-gradient(90deg,var(--royal),var(--gold)); border-radius:3px; transition:width .8s; }
-  .mp-val { font-size:11px; color:var(--cream); margin-top:4px; text-align:right; }
-
-  .modal-overlay { display:none; position:fixed; inset:0; background: rgba(0,0,0,0.8); z-index:200; align-items:center; justify-content:center; }
-  .modal-overlay.open { display:flex; }
-  .modal-box { background: linear-gradient(160deg,#0d2054,#071229); border: 2px solid var(--gold); border-radius:12px; width: 90%; max-width:680px; max-height:85vh; overflow-y:auto; padding: 24px; position:relative; box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(201,168,76,0.1); }
-  .modal-close { position:absolute; top:14px; right:18px; background:none; border:none; color:var(--gold); font-size:22px; cursor:pointer; line-height:1; }
-  .modal-title { font-family:'Cinzel Decorative',serif; font-size:20px; color:var(--gold-light); margin-bottom:20px; padding-right:30px; }
-  .shop-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
-  .shop-tab { background: rgba(255,255,255,0.06); border: 1px solid rgba(201,168,76,0.25); border-radius:4px; padding:6px 14px; cursor:pointer; font-size:12px; color:var(--cream); transition:all .2s; }
-  .shop-tab.active, .shop-tab:hover { background:rgba(201,168,76,0.2); border-color:var(--gold); color:var(--gold-light); }
-  .shop-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
-  .shop-item { background: rgba(255,255,255,0.04); border:1px solid rgba(201,168,76,0.2); border-radius:8px; padding:12px; text-align:center; cursor:pointer; transition:all .2s; position:relative; }
-  .shop-item:hover { border-color:var(--gold); background:rgba(201,168,76,0.08); transform:translateY(-2px); }
-  .shop-item.equipped { border-color:var(--green); background:rgba(39,174,96,0.1); }
-  .shop-item.locked   { opacity:.4; cursor:not-allowed; }
-  .shop-item-icon { font-size:36px; margin-bottom:6px; display:block; }
-  .shop-item-name { font-size:11px; color:var(--cream); margin-bottom:4px; }
-  .shop-item-price{ font-size:12px; color:var(--gold); font-weight:600; }
-  .shop-item-badge{ position:absolute; top:-6px; right:-6px; background:var(--gold); color:var(--navy); font-size:9px; font-weight:700; padding:2px 5px; border-radius:10px; text-transform:uppercase; }
-  .owned-badge { background:var(--green); }
-
-  .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(80px); background: linear-gradient(135deg,#0d2054,#071229); border:1px solid var(--gold); border-radius:8px; padding:12px 24px; font-size:13px; color:var(--white); z-index:999; transition:transform .4s cubic-bezier(.34,1.56,.64,1); pointer-events:none; white-space:nowrap; box-shadow:0 8px 30px rgba(0,0,0,.6); }
-  .toast.show { transform:translateX(-50%) translateY(0); }
-
-  #screen-intro, #screen-end { display:none; min-height:100vh; background: radial-gradient(ellipse at 50% 40%,#1a3a7c 0%,#0d1b3e 60%); align-items:center; justify-content:center; flex-direction:column; gap:16px; padding:40px 20px; }
-  .intro-title { font-family:'Cinzel Decorative',serif; font-size:28px; color:var(--gold-light); text-align:center; }
-  .intro-form  { display:flex; flex-direction:column; gap:12px; width:100%; max-width:380px; }
-  .intro-label { font-size:12px; color:var(--gold); text-transform:uppercase; letter-spacing:1px; }
-  .intro-input { background: rgba(255,255,255,0.07); border:1px solid rgba(201,168,76,0.35); border-radius:4px; padding:10px 14px; color:var(--white); font-family:'Josefin Sans',sans-serif; font-size:14px; outline:none; transition:border .2s; }
-  .intro-input:focus { border-color:var(--gold); }
-  .btn-primary { background: linear-gradient(135deg,var(--gold),#8a6020); color:var(--navy); border:none; padding:12px; font-family:'Cinzel Decorative',serif; font-size:14px; cursor:pointer; border-radius:4px; transition:all .2s; margin-top:8px; }
-  .btn-primary:hover { transform:scale(1.02); }
-
-  .end-trophy { font-size:80px; animation:floatAngel 2s infinite; }
-  .end-title   { font-family:'Cinzel Decorative',serif; font-size:32px; color:var(--gold-light); }
-  .end-stats   { color:var(--cream); font-size:14px; line-height:2; max-width:400px; }
-
-  ::-webkit-scrollbar { width:6px; } 
-  ::-webkit-scrollbar-track { background:#071229; }
-  ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.4); border-radius:3px; }
-  canvas { image-rendering:pixelated; }
+body{
+  font-family: Arial;
+  background:#0f1117;
+  color:white;
+  padding:20px;
+}
+input,select,button{
+  padding:6px;
+  margin:4px;
+}
+table{
+  width:100%;
+  border-collapse: collapse;
+  margin-top:20px;
+}
+th,td{
+  border:1px solid #333;
+  padding:6px;
+}
 </style>
 </head>
+
 <body>
 
-<!-- Pantalla Título -->
-<div id="screen-title">
-  <div class="title-angel">🕊️</div>
-  <h1 class="title-main">Elder Adventures</h1>
-  <p class="title-sub">La vida del misionero – RPG</p>
-  <button class="btn-start" onclick="showIntro()">¡Comenzar Misión!</button>
-</div>
+<h2>Organizador de Clientes</h2>
 
-<!-- Pantalla Intro -->
-<div id="screen-intro">
-  <div class="intro-title">📋 Llamamiento Misionero</div>
-  <p style="color:var(--cream);font-size:13px;text-align:center;max-width:400px;opacity:.8;">
-    Eres llamado a servir. Llena tu información para comenzar tu misión de 2 años.
-  </p>
-  <div class="intro-form">
-    <label class="intro-label">Tu nombre (Elder/Hermana)</label>
-    <input class="intro-input" id="inp-name" placeholder="Ej: García" maxlength="20">
-    <label class="intro-label">Tipo de misionero</label>
-    <select class="intro-input" id="inp-type">
-      <option value="elder">Elder (Élder)</option>
-      <option value="hermana">Hermana</option>
-    </select>
-    <label class="intro-label">Misión asignada</label>
-    <select class="intro-input" id="inp-mision">
-      <option value="México">México Ciudad Juárez</option>
-      <option value="Chile">Chile Santiago Sur</option>
-      <option value="Brasil">Brasil Manaos</option>
-      <option value="Perú">Perú Lima Este</option>
-      <option value="España">España Barcelona</option>
-      <option value="Utah">Utah Salt Lake City</option>
-    </select>
-    <button class="btn-primary" onclick="startGame()">¡Confirmar Llamamiento! 📜</button>
-  </div>
-</div>
+<input type="file" id="fileInput">
+<br>
 
-<!-- Pantalla Juego -->
-<div id="screen-game">
+<input id="search" placeholder="Buscar...">
+<button onclick="exportExcel()">Exportar Excel</button>
 
-  <!-- HUD -->
-  <div class="hud">
-    <div class="hud-name" id="hud-name">Élder</div>
-    <div class="stat-bar"><span class="stat-label">Fe</span><div class="bar-track"><div class="bar-fill bar-fe" id="bar-fe" style="width:80%"></div></div></div>
-    <div class="stat-bar"><span class="stat-label">Energía</span><div class="bar-track"><div class="bar-fill bar-ener" id="bar-ener" style="width:70%"></div></div></div>
-    <div class="stat-bar"><span class="stat-label">Ánimo</span><div class="bar-track"><div class="bar-fill bar-animo" id="bar-animo" style="width:75%"></div></div></div>
-    <div style="font-size:11px;color:var(--cream);opacity:.7" id="hud-asign">Asignación 1</div>
-    <div style="font-size:11px;color:var(--gold)" id="hud-week">Semana 1</div>
-    <div class="hud-coins">💰 <span id="hud-coins">120</span> P</div>
-  </div>
+<br>
 
-  <div class="game-layout">
-    <!-- Panel Izquierdo: Misionero -->
-    <div class="panel-left">
-      <div style="font-family:'Cinzel Decorative',serif;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;">Tu Misionero</div>
-      <div class="missionary-stage" onclick="openModal('vestidor')">
-        <canvas id="misionero-canvas" width="180" height="280" class="missionary-canvas"></canvas>
-      </div>
-      <div style="font-size:10px;color:var(--cream);opacity:.6;margin-top:-8px;">Clic para cambiar ropa</div>
-      <div class="equip-slots">
-        <div class="slot" onclick="openShopTab('corbatas')"><span class="slot-icon">👔</span><div class="slot-name">Corbata</div><div class="slot-val" id="slot-corbata">Azul básica</div></div>
-        <div class="slot" onclick="openShopTab('trajes')"><span class="slot-icon">🧥</span><div class="slot-name">Traje</div><div class="slot-val" id="slot-traje">Negro estándar</div></div>
-        <div class="slot" onclick="openShopTab('zapatos')"><span class="slot-icon">👞</span><div class="slot-name">Zapatos</div><div class="slot-val" id="slot-zapatos">Derby negro</div></div>
-        <div class="slot" onclick="openShopTab('peinados')"><span class="slot-icon">💇</span><div class="slot-name">Peinado</div><div class="slot-val" id="slot-peinado">Clásico</div></div>
-        <div class="slot" onclick="openShopTab('bolsos')"><span class="slot-icon">🎒</span><div class="slot-name">Bolso</div><div class="slot-val" id="slot-bolso">Maletín básico</div></div>
-        <div class="slot" onclick="openShopTab('bicicletas')"><span class="slot-icon">🚲</span><div class="slot-name">Bicicleta</div><div class="slot-val" id="slot-bici">Sin bici</div></div>
-      </div>
-    </div>
+<select id="filterInteres" onchange="render()">
+  <option>Todos</option>
+  <option>Sin clasificar</option>
+  <option>Salud</option>
+  <option>Vida</option>
+  <option>Auto</option>
+  <option>No interesado</option>
+</select>
 
-    <!-- Panel Central -->
-    <div class="panel-center">
-      <div class="location-banner">
-        <div class="location-icon" id="loc-icon">🏙️</div>
-        <div>
-          <div class="location-name" id="loc-name">Centro de la Ciudad</div>
-          <div class="location-desc" id="loc-desc">Tu primera asignación comienza aquí</div>
-        </div>
-      </div>
+<table>
+<thead>
+<tr>
+<th>Nombre</th>
+<th>Ciudad</th>
+<th>Teléfono</th>
+<th>Status</th>
+<th>Interés</th>
+<th>Nota</th>
+</tr>
+</thead>
 
-      <div class="event-box">
-        <div class="event-title" id="event-title">¡Bienvenido a la misión!</div>
-        <div class="event-text" id="event-text">El presidente de misión te da la bienvenida. Es tu primer día y todo parece nuevo y emocionante.</div>
-        <div class="event-npc" id="event-npc">
-          <div class="npc-avatar" id="npc-avatar">👨‍💼</div>
-          <div class="npc-bubble" id="npc-bubble">"Élder, tienes una misión sagrada. ¡Bienvenido!"<br><small>– Presidente de Misión</small></div>
-        </div>
-      </div>
-
-      <div class="actions-grid" id="actions-grid"></div>
-    </div>
-
-    <!-- Panel Derecho -->
-    <div class="panel-right">
-      <div class="panel-section-title">📊 Progreso Misión</div>
-      <div class="mission-progress">
-        <div class="mp-label">Investigadores</div>
-        <div class="mp-bar-track"><div class="mp-bar-fill" id="prog-inv" style="width:0%"></div></div>
-        <div class="mp-val"><span id="val-inv">0</span>/10 bautizados</div>
-      </div>
-      <div class="mission-progress">
-        <div class="mp-label">Lecciones impartidas</div>
-        <div class="mp-bar-track"><div class="mp-bar-fill" id="prog-lec" style="width:0%"></div></div>
-        <div class="mp-val"><span id="val-lec">0</span>/50</div>
-      </div>
-      <div class="mission-progress">
-        <div class="mp-label">Semanas completadas</div>
-        <div class="mp-bar-track"><div class="mp-bar-fill" id="prog-sem" style="width:0%"></div></div>
-        <div class="mp-val"><span id="val-sem">0</span>/104</div>
-      </div>
-
-      <div class="panel-section-title">🤝 Compañero Actual</div>
-      <div class="companion-card">
-        <div class="comp-avatar" id="comp-avatar">🧑</div>
-        <div>
-          <div class="comp-name" id="comp-name">Élder Johnson</div>
-          <div class="comp-origin" id="comp-origin">Utah, EUA</div>
-          <div class="comp-compat" id="comp-compat">Compatibilidad: ⭐⭐⭐⭐</div>
-        </div>
-      </div>
-
-      <div class="panel-section-title">📰 Diario Misionero</div>
-      <div id="log-list">
-        <div class="log-entry special">📜 Misión iniciada – ¡Que comience la aventura!</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Pantalla Final -->
-<div id="screen-end">
-  <div class="end-trophy">🏆</div>
-  <div class="end-title">¡Misión Completada!</div>
-  <div class="end-stats" id="end-stats"></div>
-  <button class="btn-primary" onclick="location.reload()">Jugar de nuevo</button>
-</div>
-
-<!-- Modal Tienda -->
-<div class="modal-overlay" id="modal-shop">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal()">✕</button>
-    <div class="modal-title" id="modal-title">🛍️ Tienda del Misionero</div>
-    <div class="shop-tabs" id="shop-tabs"></div>
-    <div class="shop-grid" id="shop-grid"></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
+<tbody id="tableBody"></tbody>
+</table>
 
 <script>
-// === ESTADO DEL JUEGO ===
-const G = {
-  name:'García', type:'elder', mision:'México',
-  week:1, asignment:1, coins:120,
-  fe:80, energy:70, animo:75,
-  baptisms:0, lessons:0,
-  equipped:{ corbata:'Azul básica', traje:'Negro estándar', zapatos:'Derby negro', peinado:'Clásico', bolso:'Maletín básico', bici:'Sin bici' },
-  equippedColors:{ traje:'#1a1a2e', corbata:'#2255cc', zapatos:'#1a0800', hair:'#4a2800' },
-  owned:['Azul básica','Negro estándar','Derby negro','Clásico','Maletín básico'],
-  companion:{ name:'Élder Johnson', origin:'Utah, EUA', avatar:'🧑', compat:4 },
-  currentTab:'corbatas'
-};
 
-// === CATÁLOGO (resumido para que quepa) ===
-const CATALOG = { /* ... (el mismo catálogo que tenías antes) ... */ 
-  corbatas: [ /* todos los items */ ],
-  trajes: [ /* todos */ ],
-  zapatos: [ /* todos */ ],
-  peinados: [ /* todos */ ],
-  bolsos: [ /* todos */ ],
-  bicicletas: [ /* todos */ ]
-};
+let rows = JSON.parse(localStorage.getItem("clientes") || "[]");
 
-// (Por espacio, aquí se cortó el catálogo completo. 
-// Si quieres, dime y te doy la versión completa con todo el catálogo, EVENTS, ACTIONS, etc.)
+document.getElementById("fileInput").addEventListener("change", e=>{
+  const file = e.target.files[0];
+  const reader = new FileReader();
 
-// Nota: El código completo es muy largo. 
-// Si al guardar te da error, avísame y te entrego el archivo completo en partes o te ayudo a subirlo.
+  reader.onload = (evt)=>{
+    const wb = XLSX.read(evt.target.result, {type:"array"});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws);
 
-alert("¡Archivo listo! Guarda este código como index.html y súbelo a itch.io o GitHub Pages.");
+    const parsed = data.map((r,i)=>({
+      id: Date.now()+i,
+      nombre: r.Nombre || r.name || "",
+      ciudad: r.Ciudad || r.city || "",
+      telefono: r.Telefono || r.Phone || "",
+      status: r.Status || "",
+      interes: "Sin clasificar",
+      nota: ""
+    }));
+
+    rows = [...rows, ...parsed];
+    save();
+    render();
+  };
+
+  reader.readAsArrayBuffer(file);
+});
+
+function save(){
+  localStorage.setItem("clientes", JSON.stringify(rows));
+}
+
+function render(){
+
+  const search = document.getElementById("search").value.toLowerCase();
+  const filtro = document.getElementById("filterInteres").value;
+
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+
+  rows
+  .filter(r=>{
+    if(filtro !== "Todos" && r.interes !== filtro) return false;
+    return r.nombre.toLowerCase().includes(search) || r.telefono.includes(search);
+  })
+  .forEach(r=>{
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${r.nombre}</td>
+      <td>${r.ciudad}</td>
+      <td>${r.telefono}</td>
+      <td>${r.status}</td>
+      <td>
+        <select onchange="updateInteres('${r.id}',this.value)">
+          <option ${r.interes=="Sin clasificar"?"selected":""}>Sin clasificar</option>
+          <option ${r.interes=="Salud"?"selected":""}>Salud</option>
+          <option ${r.interes=="Vida"?"selected":""}>Vida</option>
+          <option ${r.interes=="Auto"?"selected":""}>Auto</option>
+          <option ${r.interes=="No interesado"?"selected":""}>No interesado</option>
+        </select>
+      </td>
+      <td>
+        <input value="${r.nota}" onchange="updateNota('${r.id}',this.value)">
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+
+  });
+}
+
+function updateNota(id,val){
+  rows = rows.map(r => r.id==id ? {...r, nota:val} : r);
+  save();
+}
+
+function updateInteres(id,val){
+  rows = rows.map(r => r.id==id ? {...r, interes:val} : r);
+  save();
+  render();
+}
+
+function exportExcel(){
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Clientes");
+  XLSX.writeFile(wb, "clientes.xlsx");
+}
+
+render();
+
 </script>
+
 </body>
 </html>
