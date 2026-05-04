@@ -2,350 +2,357 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Analizador de Prospectos</title>
+<title>Extractor de Prospectos por Ciudad</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
 <style>
-body{margin:0;background:#0f1117;color:white;font-family:Arial;padding:20px}
-input,button,select{padding:8px;margin:4px;border-radius:6px}
-button{cursor:pointer}
-table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px}
-th,td{border:1px solid #333;padding:6px;white-space:nowrap}
-th{background:#1f2937}
-.card{background:#141823;padding:15px;border-radius:10px;margin-bottom:15px}
+body{
+  margin:0;
+  background:#0f1117;
+  color:white;
+  font-family:Arial, sans-serif;
+  padding:20px;
+}
+h1{margin-top:0}
+.card{
+  background:#141823;
+  border:1px solid #263041;
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:15px;
+}
+input,select,button{
+  padding:8px;
+  margin:4px;
+  border-radius:6px;
+  border:1px solid #334155;
+}
+button{
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+}
+button.red{background:#991b1b}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+th,td{
+  border:1px solid #333;
+  padding:7px;
+  white-space:nowrap;
+}
+th{
+  background:#1f2937;
+}
 .pagado{background:#dcfce7;color:#166534;font-weight:bold}
-.anulado{background:#fee2e2;color:#991b1b;font-weight:bold}
-.cobrar{background:#dbeafe;color:#1e40af;font-weight:bold}
+.agendar{background:#fee2e2;color:#991b1b;font-weight:bold}
+.otro{background:#e2e8f0;color:#334155;font-weight:bold}
 </style>
 </head>
+
 <body>
 
-<h1>Analizador de Prospectos</h1>
+<h1>Extractor de Prospectos por Ciudad</h1>
 
 <div class="card">
-<input type="file" id="files" multiple accept=".pdf,.xlsx,.xls,.csv">
-<button onclick="exportExcel()">Exportar Excel</button>
-<button onclick="clearAll()">Borrar Todo</button>
-<br>
-<input id="search" placeholder="Buscar nombre, teléfono o ciudad" oninput="render()" style="width:320px">
-<select id="statusFilter" onchange="render()">
-<option>Todos</option>
-<option>Pagado</option>
-<option>Anulado</option>
-<option>Por Cobrar</option>
-<option>Pendiente</option>
-<option>Disponible</option>
-<option>Completo</option>
-<option>Bloqueado</option>
-</select>
-<p id="msg"></p>
+  <input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv">
+  <button onclick="exportExcel()">Exportar Excel</button>
+  <button class="red" onclick="clearAll()">Borrar todo</button>
+  <br>
+  <input id="search" placeholder="Buscar nombre, teléfono o ciudad..." oninput="render()" style="width:330px">
+  <select id="cityFilter" onchange="render()">
+    <option>Todos</option>
+  </select>
+  <select id="statusFilter" onchange="render()">
+    <option>Todos</option>
+    <option>Pagado</option>
+    <option>Agendar</option>
+    <option>Esp. Disp.</option>
+    <option>Pendiente</option>
+  </select>
+  <p id="msg"></p>
 </div>
 
 <div class="card">
-<b>Total:</b> <span id="total">0</span> |
-<b>Pagados:</b> <span id="pagados">0</span> |
-<b>Anulados:</b> <span id="anulados">0</span> |
-<b>Con teléfono:</b> <span id="telefonos">0</span>
+  <b>Total:</b> <span id="total">0</span> |
+  <b>Pagados:</b> <span id="pagados">0</span> |
+  <b>Agendar:</b> <span id="agendar">0</span> |
+  <b>Con teléfono:</b> <span id="phones">0</span>
 </div>
 
+<div class="card">
 <table>
 <thead>
 <tr>
 <th>#</th>
-<th>Nombre</th>
-<th>Teléfono</th>
 <th>Ciudad</th>
+<th>Nombre</th>
+<th>Apellido</th>
+<th>Nombre Completo</th>
+<th>Teléfono</th>
 <th>Trámite</th>
 <th>Status</th>
+<th>Propietario</th>
 <th>Fuente</th>
-<th>Nota</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
 </table>
+</div>
 
 <script>
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+let rows = JSON.parse(localStorage.getItem("prospectos_ciudad_v1") || "[]");
 
-let rows = JSON.parse(localStorage.getItem("prospectos_ok") || "[]");
-
-document.getElementById("files").addEventListener("change", async e => {
+document.getElementById("fileInput").addEventListener("change", async function(e){
   const files = Array.from(e.target.files);
-  document.getElementById("msg").innerText = "Procesando...";
-  for (const file of files) {
-    if (file.name.toLowerCase().endsWith(".pdf")) {
-      await processPDF(file);
-    } else {
-      await processExcel(file);
-    }
+  document.getElementById("msg").innerText = "Procesando archivos...";
+
+  for(const file of files){
+    await processFile(file);
   }
+
   dedupe();
   save();
+  updateFilters();
   render();
-  document.getElementById("msg").innerText = "Listo: " + rows.length + " registros procesados.";
+
+  document.getElementById("msg").innerText = "Listo. Registros encontrados: " + rows.length;
 });
 
 function clean(v){
-  return String(v || "").replace(/\s+/g," ").trim();
+  return String(v || "")
+    .replace(/\s+/g," ")
+    .replace(/\u00A0/g," ")
+    .trim();
+}
+
+function normalizeHeader(v){
+  return clean(v)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"");
 }
 
 function digits(v){
   return String(v || "").replace(/\D/g,"");
 }
 
-function phone(v){
-  const d = digits(v);
-  if(d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
-  if(d.length === 11 && d.startsWith("1")) return `+1 (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
-  if(d.length > 11) return d;
+function normalizePhone(v){
+  let d = digits(v);
+
+  if(d.length === 10){
+    return "(" + d.slice(0,3) + ") " + d.slice(3,6) + "-" + d.slice(6);
+  }
+
+  if(d.length === 11 && d.startsWith("1")){
+    return "+1 (" + d.slice(1,4) + ") " + d.slice(4,7) + "-" + d.slice(7);
+  }
+
+  if(d.length > 11){
+    return d;
+  }
+
   return "";
 }
 
-function findPhone(text){
-  const m = String(text).match(/(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}|\b\d{10,13}\b/);
-  return m ? phone(m[0]) : "";
+function isValidPhone(v){
+  return digits(v).length >= 10;
 }
 
-function statusFromText(v){
-  const s = clean(v).toLowerCase();
-  if(s.includes("pagado") || s.includes("pago")) return "Pagado";
-  if(s.includes("anulado") || s.includes("cancel")) return "Anulado";
-  if(s.includes("cobrar")) return "Por Cobrar";
-  if(s.includes("pendiente")) return "Pendiente";
-  if(s.includes("disponible")) return "Disponible";
-  if(s.includes("completo")) return "Completo";
-  if(s.includes("bloqueado")) return "Bloqueado";
-  return "Sin Status";
-}
+function findCol(headers, options){
+  const normalized = headers.map(h => normalizeHeader(h));
 
-function findCol(headers, keys){
-  const lower = headers.map(h => String(h).toLowerCase());
-  for(const k of keys){
-    const i = lower.findIndex(h => h.includes(k));
-    if(i >= 0) return headers[i];
+  for(const option of options){
+    const key = normalizeHeader(option);
+    const index = normalized.findIndex(h => h === key || h.includes(key));
+    if(index >= 0) return headers[index];
   }
+
   return null;
 }
 
-async function processExcel(file){
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf,{type:"array"});
+function getSheetCity(sheetName){
+  const s = clean(sheetName).toLowerCase();
 
-  for(const sheet of wb.SheetNames){
-    const data = XLSX.utils.sheet_to_json(wb.Sheets[sheet],{defval:"",raw:false});
+  const invalid = [
+    "sheet","hoja","general","pagado","pagados","base","tabla",
+    "clientes","prospectos","data","datos"
+  ];
+
+  if(invalid.some(x => s.includes(x))) return "";
+
+  return clean(sheetName);
+}
+
+async function processFile(file){
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, {type:"array"});
+
+  for(const sheetName of wb.SheetNames){
+    const ws = wb.Sheets[sheetName];
+
+    const data = XLSX.utils.sheet_to_json(ws, {
+      defval:"",
+      raw:false
+    });
+
     if(!data.length) continue;
 
     const headers = Object.keys(data[0]);
 
-    const colCliente = findCol(headers,["cliente (s)","cliente","nombres apellidos","nombre","titular"]);
-    const colTelefono = findCol(headers,["telefono cliente","teléfono cliente","numero","teléfono","telefono","familiar"]);
-    const colCiudad = findCol(headers,["ciudad"]);
-    const colTramite = findCol(headers,["tramites","trámite","tramite","servicio"]);
-    const colStatus = findCol(headers,["status","estado","notas","nota"]);
-    const colFechaPago = findCol(headers,["fecha de pago"]);
-    const colMonto = findCol(headers,["monto"]);
+    const colCiudad = findCol(headers, [
+      "Ciudad",
+      "City",
+      "Origen Ciudad",
+      "Columna 1"
+    ]);
 
-    const isPaid = headers.join(" ").toLowerCase().includes("fecha de pago") ||
-                   headers.join(" ").toLowerCase().includes("monto") ||
-                   headers.join(" ").toLowerCase().includes("titular pago");
+    const colNombre = findCol(headers, [
+      "Nombres",
+      "Nombre",
+      "Cliente",
+      "Cliente (s)",
+      "Titular",
+      "Titular Pago"
+    ]);
 
-    for(const r of data){
-      let nombre = clean(colCliente ? r[colCliente] : "");
-      let telefono = phone(colTelefono ? r[colTelefono] : "") || findPhone(Object.values(r).join(" "));
-      let ciudad = clean(colCiudad ? r[colCiudad] : "");
-      let tramite = clean(colTramite ? r[colTramite] : "Cita consular");
-      let status = isPaid ? "Pagado" : statusFromText(colStatus ? r[colStatus] : "");
+    const colApellido = findCol(headers, [
+      "Apellidos",
+      "Apellido"
+    ]);
 
-      if(!nombre && isPaid){
-        nombre = clean(r["Cliente (s)"] || r["Cliente"] || r["Titular Pago"] || "");
+    const colNumero = findCol(headers, [
+      "Numero",
+      "Número",
+      "Telefono",
+      "Teléfono",
+      "Telefono Cliente",
+      "Teléfono Cliente",
+      "Familiar",
+      "Phone"
+    ]);
+
+    const colTramite = findCol(headers, [
+      "Tramites",
+      "Trámites",
+      "Tramite",
+      "Trámite",
+      "Servicio",
+      "Tipo"
+    ]);
+
+    const colStatus = findCol(headers, [
+      "Status",
+      "Estatus",
+      "Estado"
+    ]);
+
+    const colPropietario = findCol(headers, [
+      "Propietario",
+      "Vendedor",
+      "Agente",
+      "Owner"
+    ]);
+
+    const sheetCity = getSheetCity(sheetName);
+
+    for(const item of data){
+      let ciudad = clean(colCiudad ? item[colCiudad] : "") || sheetCity;
+
+      let nombre = clean(colNombre ? item[colNombre] : "");
+      let apellido = clean(colApellido ? item[colApellido] : "");
+
+      let telefono = normalizePhone(colNumero ? item[colNumero] : "");
+
+      if(!telefono){
+        telefono = extractPhoneFromRow(item);
       }
 
-      if(isBad(nombre, telefono)) continue;
+      let tramite = clean(colTramite ? item[colTramite] : "");
+      let status = normalizeStatus(colStatus ? item[colStatus] : "");
+      let propietario = clean(colPropietario ? item[colPropietario] : "");
+
+      if(!nombre && !apellido) continue;
+      if(!telefono) continue;
+
+      if(isHeaderFake(nombre, apellido, telefono, ciudad)) continue;
 
       rows.push({
         id: crypto.randomUUID(),
+        ciudad: normalizeCity(ciudad),
         nombre,
+        apellido,
+        nombreCompleto: clean(nombre + " " + apellido),
         telefono,
-        ciudad,
-        tramite,
-        status,
-        fuente: file.name + " / " + sheet,
-        nota: ""
+        tramite: tramite || "Sin trámite",
+        status: status || "Pendiente",
+        propietario,
+        fuente: file.name + " / " + sheetName
       });
     }
   }
 }
 
-async function processPDF(file){
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-
-  for(let pageNum=1; pageNum<=pdf.numPages; pageNum++){
-    const page = await pdf.getPage(pageNum);
-    const content = await page.getTextContent();
-
-    const items = content.items.map(i => ({
-      text: clean(i.str),
-      x: i.transform[4],
-      y: Math.round(i.transform[5])
-    })).filter(i => i.text);
-
-    const lines = groupByLine(items);
-    const pageText = lines.map(l => l.text).join(" ").toLowerCase();
-
-    if(pageText.includes("fecha de pago") && pageText.includes("telefono cliente")){
-      parsePaidPDFLines(lines, file.name, pageNum);
-    } else if(pageText.includes("nombres apellidos") && pageText.includes("tramites")){
-      parseAppointmentPDFLines(lines, file.name, pageNum);
-    } else if(pageText.includes("ciudad") && pageText.includes("correo") && pageText.includes("status")){
-      parseAccountPDFLines(lines, file.name, pageNum);
-    }
-  }
-}
-
-function groupByLine(items){
-  const map = {};
-  for(const it of items){
-    const key = it.y;
-    if(!map[key]) map[key] = [];
-    map[key].push(it);
-  }
-
-  return Object.values(map).map(arr => {
-    arr.sort((a,b)=>a.x-b.x);
-    return {
-      y: arr[0].y,
-      cells: arr,
-      text: arr.map(i=>i.text).join(" ")
-    };
-  }).sort((a,b)=>b.y-a.y);
-}
-
-function parsePaidPDFLines(lines, file, page){
-  for(const line of lines){
-    const text = line.text;
-    const p = findPhone(text);
-    if(!p) continue;
-
-    const status = "Pagado";
-    const ciudad = getCityFromText(text);
-    const nombre = getNameAfterPhone(text, p);
-
-    if(isBad(nombre, p)) continue;
-
-    rows.push({
-      id: crypto.randomUUID(),
-      nombre,
-      telefono:p,
-      ciudad,
-      tramite:"Cita consular",
-      status,
-      fuente:`${file} página ${page}`,
-      nota:""
-    });
-  }
-}
-
-function parseAppointmentPDFLines(lines, file, page){
-  for(const line of lines){
-    const text = line.text;
-    const p = findPhone(text);
-    if(!p) continue;
-
-    let status = statusFromText(text);
-    let tramite = getTramite(text);
-    let nombre = text.split(/\d{1,2}\/\d{1,2}\/\d{2,4}|MANUALMENTE|[A-Z]{4}\d{6}/)[0];
-    nombre = clean(nombre.replace("Nombres Apellidos",""));
-
-    if(isBad(nombre, p)) continue;
-
-    rows.push({
-      id: crypto.randomUUID(),
-      nombre,
-      telefono:p,
-      ciudad:"",
-      tramite,
-      status,
-      fuente:`${file} página ${page}`,
-      nota:""
-    });
-  }
-}
-
-function parseAccountPDFLines(lines, file, page){
-  for(const line of lines){
-    const text = line.text;
-    if(!text.includes("@")) continue;
-
-    const parts = text.split(" ");
-    const ciudad = parts[0] || "";
-    const status = statusFromText(text);
-
-    rows.push({
-      id: crypto.randomUUID(),
-      nombre:"",
-      telefono:"",
-      ciudad,
-      tramite:"Cuenta / cupo",
-      status,
-      fuente:`${file} página ${page}`,
-      nota:text
-    });
-  }
-}
-
-function getNameAfterPhone(text, p){
-  const d = digits(p);
-  const last7 = d.slice(-7);
-  const compact = text.replace(/\D/g,"");
-
-  let words = text.split(/\s+/);
-  let idx = -1;
-
-  for(let i=0;i<words.length;i++){
-    if(digits(words[i]).length >= 7 || digits(words.slice(i,i+3).join("")).includes(last7)){
-      idx = i;
-      break;
-    }
-  }
-
-  if(idx >= 0){
-    let possible = words.slice(idx+1).join(" ");
-    possible = possible.replace(/\b\d+\b.*$/,"");
-    possible = possible.replace(/Cant\.? Citas.*/i,"");
-    possible = possible.replace(/\b\d{1,2}\s+\w+\s+\d{4}.*/i,"");
-    return clean(possible);
-  }
-
-  return "";
-}
-
-function getCityFromText(text){
-  const cities = [
-    "San Francisco","San Jose","San Bernardino","Los Angeles","Sacramento",
-    "Atlanta","Austin","Dallas","Houston","Seattle","Fresno","Raleigh",
-    "Omaha","Kansas City","New York","Milwaukee","Santa Ana","Indianapolis",
-    "Oxnard","Portland","Las Vegas","Chicago","Miami","Orlando"
-  ];
-  const lower = text.toLowerCase();
-  for(const c of cities){
-    if(lower.includes(c.toLowerCase())) return c;
+function extractPhoneFromRow(row){
+  for(const value of Object.values(row)){
+    const phone = normalizePhone(value);
+    if(phone) return phone;
   }
   return "";
 }
 
-function getTramite(text){
-  const m = text.match(/(1ra|2da|Renovar|Renovacion|Renovación|Pasaporte|Matricula|Matrícula|Pa|Ma|Cre)[^0-9]{0,35}/i);
-  return m ? clean(m[0]) : "Cita consular";
+function normalizeStatus(v){
+  const s = clean(v).toLowerCase();
+
+  if(s.includes("pagado") || s === "pago") return "Pagado";
+  if(s.includes("agendar")) return "Agendar";
+  if(s.includes("esp")) return "Esp. Disp.";
+  if(s.includes("pend")) return "Pendiente";
+  if(s.includes("anulado")) return "Anulado";
+  if(s.includes("cancel")) return "Anulado";
+
+  return clean(v) || "Pendiente";
 }
 
-function isBad(nombre, telefono){
-  const n = clean(nombre).toLowerCase();
-  if(!telefono || digits(telefono).length < 10) return true;
-  if(!n) return true;
-  if(n.includes("cliente") || n.includes("telefono") || n.includes("titular") || n.includes("d/mm/yyyy")) return true;
-  if(n.length < 3) return true;
+function normalizeCity(v){
+  let c = clean(v);
+
+  if(!c) return "Sin ciudad";
+
+  const lower = c.toLowerCase();
+
+  if(lower.includes("atlanta")) return "Atlanta";
+  if(lower.includes("austin")) return "Austin";
+  if(lower.includes("fresno")) return "Fresno";
+  if(lower.includes("san jose")) return "San Jose";
+  if(lower.includes("san francisco")) return "San Francisco";
+  if(lower.includes("san bernardino")) return "San Bernardino";
+  if(lower.includes("los angeles")) return "Los Angeles";
+  if(lower.includes("new york")) return "New York";
+  if(lower.includes("chicago")) return "Chicago";
+  if(lower.includes("oxnard")) return "Oxnard";
+  if(lower.includes("seattle")) return "Seattle";
+  if(lower.includes("sacramento")) return "Sacramento";
+  if(lower.includes("del rio")) return "Del Rio";
+  if(lower.includes("dallas")) return "Dallas";
+  if(lower.includes("houston")) return "Houston";
+
+  return c;
+}
+
+function isHeaderFake(nombre, apellido, telefono, ciudad){
+  const text = clean(nombre + " " + apellido + " " + telefono + " " + ciudad).toLowerCase();
+
+  if(text.includes("nombres")) return true;
+  if(text.includes("apellidos")) return true;
+  if(text.includes("numero")) return true;
+  if(text.includes("telefono")) return true;
+  if(text.includes("ciudad")) return true;
+  if(text.includes("status")) return true;
+  if(text.includes("propietario")) return true;
+
   return false;
 }
 
@@ -353,116 +360,165 @@ function dedupe(){
   const map = new Map();
 
   for(const r of rows){
-    const key = digits(r.telefono) || r.nombre.toLowerCase();
-    if(!key) continue;
+    const key = digits(r.telefono) + "|" + r.nombreCompleto.toLowerCase();
 
     if(!map.has(key)){
-      map.set(key,r);
-    } else {
+      map.set(key, r);
+    }else{
       const old = map.get(key);
-      const rankOld = rank(old.status);
-      const rankNew = rank(r.status);
 
-      if(rankNew > rankOld){
-        map.set(key,{...old,...r,nota:old.nota || r.nota});
-      } else {
-        map.set(key,{
-          ...old,
-          ciudad: old.ciudad || r.ciudad,
-          tramite: old.tramite || r.tramite,
-          fuente: old.fuente + " | " + r.fuente
-        });
-      }
+      map.set(key, {
+        ...old,
+        ciudad: old.ciudad || r.ciudad,
+        tramite: old.tramite || r.tramite,
+        status: pickBestStatus(old.status, r.status),
+        propietario: old.propietario || r.propietario,
+        fuente: old.fuente + " | " + r.fuente
+      });
     }
   }
 
-  rows = Array.from(map.values()).sort((a,b)=>rank(b.status)-rank(a.status));
+  rows = Array.from(map.values()).sort((a,b)=>{
+    return rankStatus(b.status) - rankStatus(a.status);
+  });
 }
 
-function rank(s){
-  if(s==="Pagado") return 100;
-  if(s==="Por Cobrar") return 80;
-  if(s==="Pendiente") return 60;
-  if(s==="Disponible") return 50;
-  if(s==="Completo") return 40;
-  if(s==="Bloqueado") return 30;
-  if(s==="Anulado") return 10;
+function pickBestStatus(a,b){
+  return rankStatus(b) > rankStatus(a) ? b : a;
+}
+
+function rankStatus(s){
+  if(s === "Pagado") return 100;
+  if(s === "Esp. Disp.") return 70;
+  if(s === "Pendiente") return 60;
+  if(s === "Agendar") return 50;
+  if(s === "Anulado") return 10;
   return 0;
 }
 
 function save(){
-  localStorage.setItem("prospectos_ok",JSON.stringify(rows));
+  localStorage.setItem("prospectos_ciudad_v1", JSON.stringify(rows));
+}
+
+function updateFilters(){
+  const cityFilter = document.getElementById("cityFilter");
+  const currentCity = cityFilter.value;
+
+  const cities = [...new Set(rows.map(r => r.ciudad).filter(Boolean))].sort();
+
+  cityFilter.innerHTML = "<option>Todos</option>" + cities.map(c => `<option>${c}</option>`).join("");
+
+  if(cities.includes(currentCity)){
+    cityFilter.value = currentCity;
+  }
 }
 
 function render(){
+  updateFilters();
+
   const q = document.getElementById("search").value.toLowerCase();
-  const sf = document.getElementById("statusFilter").value;
+  const city = document.getElementById("cityFilter").value;
+  const status = document.getElementById("statusFilter").value;
 
   const filtered = rows.filter(r => {
-    if(sf !== "Todos" && r.status !== sf) return false;
-    return `${r.nombre} ${r.telefono} ${r.ciudad} ${r.tramite}`.toLowerCase().includes(q);
+    if(city !== "Todos" && r.ciudad !== city) return false;
+    if(status !== "Todos" && r.status !== status) return false;
+
+    const all = `${r.nombreCompleto} ${r.telefono} ${r.ciudad} ${r.tramite} ${r.status}`.toLowerCase();
+    return all.includes(q);
   });
 
   document.getElementById("total").innerText = rows.length;
-  document.getElementById("pagados").innerText = rows.filter(r=>r.status==="Pagado").length;
-  document.getElementById("anulados").innerText = rows.filter(r=>r.status==="Anulado").length;
-  document.getElementById("telefonos").innerText = rows.filter(r=>digits(r.telefono).length>=10).length;
+  document.getElementById("pagados").innerText = rows.filter(r => r.status === "Pagado").length;
+  document.getElementById("agendar").innerText = rows.filter(r => r.status === "Agendar").length;
+  document.getElementById("phones").innerText = rows.filter(r => isValidPhone(r.telefono)).length;
 
   const tbody = document.getElementById("tbody");
   tbody.innerHTML = "";
 
-  filtered.forEach((r,i)=>{
-    const cls = r.status==="Pagado" ? "pagado" : r.status==="Anulado" ? "anulado" : r.status==="Por Cobrar" ? "cobrar" : "";
+  filtered.forEach((r,i) => {
+    const cls = r.status === "Pagado" ? "pagado" : r.status === "Agendar" ? "agendar" : "otro";
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i+1}</td>
-      <td>${esc(r.nombre)}</td>
-      <td>${esc(r.telefono)}</td>
-      <td>${esc(r.ciudad || "Sin ciudad")}</td>
-      <td>${esc(r.tramite)}</td>
-      <td class="${cls}">${esc(r.status)}</td>
-      <td>${esc(r.fuente)}</td>
-      <td><input value="${escAttr(r.nota)}" onchange="note('${r.id}',this.value)"></td>
+      <td>${escapeHTML(r.ciudad)}</td>
+      <td>${escapeHTML(r.nombre)}</td>
+      <td>${escapeHTML(r.apellido)}</td>
+      <td>${escapeHTML(r.nombreCompleto)}</td>
+      <td>${escapeHTML(r.telefono)}</td>
+      <td>${escapeHTML(r.tramite)}</td>
+      <td class="${cls}">${escapeHTML(r.status)}</td>
+      <td>${escapeHTML(r.propietario)}</td>
+      <td>${escapeHTML(r.fuente)}</td>
     `;
     tbody.appendChild(tr);
   });
 }
 
-function note(id,val){
-  rows = rows.map(r=>r.id===id?{...r,nota:val}:r);
-  save();
-}
-
 function exportExcel(){
-  const wb = XLSX.utils.book_new();
-  const data = rows.map((r,i)=>({
-    "#":i+1,
-    Nombre:r.nombre,
-    Telefono:r.telefono,
-    Ciudad:r.ciudad,
-    Tramite:r.tramite,
-    Status:r.status,
-    Fuente:r.fuente,
-    Nota:r.nota
+  const data = rows.map((r,i) => ({
+    "#": i+1,
+    Ciudad: r.ciudad,
+    Nombre: r.nombre,
+    Apellido: r.apellido,
+    "Nombre Completo": r.nombreCompleto,
+    Telefono: r.telefono,
+    Tramite: r.tramite,
+    Status: r.status,
+    Propietario: r.propietario,
+    Fuente: r.fuente
   }));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),"Prospectos");
-  XLSX.writeFile(wb,"prospectos_limpios.xlsx");
+
+  const wb = XLSX.utils.book_new();
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, "Prospectos");
+
+  const resumen = {};
+
+  rows.forEach(r => {
+    if(!resumen[r.ciudad]){
+      resumen[r.ciudad] = {
+        Ciudad: r.ciudad,
+        Total: 0,
+        Pagado: 0,
+        Agendar: 0,
+        Pendiente: 0,
+        Anulado: 0
+      };
+    }
+
+    resumen[r.ciudad].Total++;
+
+    if(r.status === "Pagado") resumen[r.ciudad].Pagado++;
+    if(r.status === "Agendar") resumen[r.ciudad].Agendar++;
+    if(r.status === "Pendiente") resumen[r.ciudad].Pendiente++;
+    if(r.status === "Anulado") resumen[r.ciudad].Anulado++;
+  });
+
+  const ws2 = XLSX.utils.json_to_sheet(Object.values(resumen));
+  XLSX.utils.book_append_sheet(wb, ws2, "Resumen por Ciudad");
+
+  XLSX.writeFile(wb, "prospectos_por_ciudad.xlsx");
 }
 
 function clearAll(){
-  if(confirm("¿Borrar todo?")){
-    rows=[];
-    localStorage.removeItem("prospectos_ok");
+  if(confirm("¿Seguro que quieres borrar todo?")){
+    rows = [];
+    localStorage.removeItem("prospectos_ciudad_v1");
     render();
   }
 }
 
-function esc(v){
-  return String(v||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-}
-
-function escAttr(v){
-  return esc(v).replace(/"/g,"&quot;");
+function escapeHTML(v){
+  return String(v || "").replace(/[&<>"']/g, m => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  }[m]));
 }
 
 render();
